@@ -1,1 +1,0 @@
-# Tazkarti Ticket Reservation System

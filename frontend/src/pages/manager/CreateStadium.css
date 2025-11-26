@@ -1,0 +1,16 @@
+.create-stadium-page {
+    padding-bottom: var(--spacing-3xl);
+}
+
+.vip-section {
+    background: rgba(0, 0, 0, 0.2);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-md);
+    margin-top: var(--spacing-lg);
+    border: 1px dashed var(--color-border);
+}
+
+.vip-section h3 {
+    font-size: var(--font-size-lg);
+    margin-bottom: var(--spacing-xs);
+}

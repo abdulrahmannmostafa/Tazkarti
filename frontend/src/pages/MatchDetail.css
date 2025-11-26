@@ -1,0 +1,129 @@
+.match-hero {
+    padding: var(--spacing-2xl);
+    margin-bottom: var(--spacing-xl);
+    text-align: center;
+    background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url('https://images.unsplash.com/photo-1522778119026-d647f0565c6a?w=1200&q=80');
+    background-size: cover;
+    background-position: center;
+}
+
+.match-hero-content {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-xl);
+}
+
+.team-large {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.team-logo-large {
+    font-size: 5rem;
+    background: rgba(255, 255, 255, 0.1);
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    backdrop-filter: blur(5px);
+}
+
+.match-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.match-time {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.match-time .date {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+}
+
+.vs-large {
+    font-size: var(--font-size-4xl);
+    font-weight: var(--font-weight-extrabold);
+    color: var(--color-primary);
+    text-shadow: 0 0 20px rgba(206, 17, 38, 0.5);
+}
+
+.match-details-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: var(--spacing-xl);
+}
+
+.info-list {
+    list-style: none;
+    padding: 0;
+}
+
+.info-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--spacing-md) 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.info-list li:last-child {
+    border-bottom: none;
+}
+
+.info-list .label {
+    color: var(--color-text-secondary);
+}
+
+.info-list .value {
+    font-weight: var(--font-weight-medium);
+}
+
+.price-tag {
+    text-align: center;
+    margin-bottom: var(--spacing-lg);
+}
+
+.price-tag .amount {
+    display: block;
+    font-size: var(--font-size-3xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary);
+}
+
+.price-tag .per-ticket {
+    color: var(--color-text-muted);
+}
+
+.booking-note {
+    text-align: center;
+    margin-bottom: var(--spacing-lg);
+    color: var(--color-text-secondary);
+}
+
+.auth-buttons {
+    display: flex;
+    gap: var(--spacing-md);
+    justify-content: center;
+    margin-top: var(--spacing-md);
+}
+
+@media (max-width: 768px) {
+    .match-hero-content {
+        flex-direction: column;
+    }
+
+    .match-details-grid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -1,0 +1,61 @@
+.seat-selection-page {
+    padding-bottom: var(--spacing-3xl);
+}
+
+.selection-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-xl);
+    flex-wrap: wrap;
+    gap: var(--spacing-lg);
+}
+
+.match-summary h2 {
+    margin-bottom: var(--spacing-xs);
+}
+
+.match-summary p {
+    color: var(--color-text-muted);
+    margin: 0;
+}
+
+.selection-summary {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xl);
+    padding: var(--spacing-md) var(--spacing-xl);
+}
+
+.stat {
+    display: flex;
+    flex-direction: column;
+}
+
+.stat .label {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+}
+
+.stat .value {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary);
+}
+
+.stadium-container {
+    display: flex;
+    justify-content: center;
+}
+
+@media (max-width: 768px) {
+    .selection-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .selection-summary {
+        justify-content: space-between;
+    }
+}
