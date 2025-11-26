@@ -1,276 +1,476 @@
-import { matches, getMatchById, getUpcomingMatches } from '../data/matches';
-import { teams, getTeamById } from '../data/teams';
-import { stadiums, getStadiumById, generateSeats } from '../data/stadiums';
-import { users, validateCredentials, getPendingUsers, findUserByUsername } from '../data/users';
-import { reservations, getReservationsByUser, getReservedSeatsForMatch, generateTicketNumber } from '../data/reservations';
+// ==========================================
+// api.js - Updated to use real backend
+// ==========================================
 
-const delay = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
-let matchesDB = [...matches];
-let usersDB = [...users];
-let stadiumsDB = [...stadiums];
-let reservationsDB = [...reservations];
-let seatsDB = {}; // matchId -> seats array
-matchesDB.forEach(match => {
-    const stadium = getStadiumById(match.stadiumId);
-    const seats = generateSeats(stadium.vipRows, stadium.vipSeatsPerRow);
-    const reservedSeats = getReservedSeatsForMatch(match.id);
-    reservedSeats.forEach(reserved => {
-        const seat = seats.find(s => s.row === reserved.row && s.seatNumber === reserved.seatNumber);
-        if (seat) {
-            seat.status = 'reserved';
-            seat.reservedBy = reserved.reservedBy;
-        }
-    });
+import axios from 'axios';
 
-    seatsDB[match.id] = seats;
+
+// Create axios instance
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
+
+// Request interceptor - Add JWT token to every request
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor - Handle errors globally
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token expired or invalid - logout user
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// ==========================================
+// AUTH API
+// ==========================================
 export const authAPI = {
-    login: async (username, password) => {
-        await delay(800);
-        const user = validateCredentials(username, password);
-
-        if (user) {
-            if (!user.approved) {
-                return {
-                    success: false,
-                    error: 'Your account is pending approval by an administrator'
-                };
-            }
-
-            const token = btoa(JSON.stringify({ userId: user.id, username: user.username }));
-            return { success: true, data: { user, token } };
-        }
-
-        return { success: false, error: 'Invalid username or password' };
-    },
-
-    register: async (userData) => {
-        await delay(1000);
-        if (findUserByUsername(userData.username)) {
-            return { success: false, error: 'Username already exists' };
-        }
-
-        const newUser = {
-            id: usersDB.length + 1,
-            ...userData,
-            approved: userData.role === 'fan' // Fans auto-approved, managers need approval
-        };
-
-        usersDB.push(newUser);
-
-        if (newUser.approved) {
-            const { password, ...userWithoutPassword } = newUser;
-            const token = btoa(JSON.stringify({ userId: newUser.id, username: newUser.username }));
-            return { success: true, data: { user: userWithoutPassword, token } };
-        } else {
-            return {
-                success: true,
-                data: {
-                    message: 'Registration successful. Your account is pending admin approval.',
-                    requiresApproval: true
-                }
-            };
-        }
+  login: async (username, password) => {
+    try {
+      const response = await api.post('/auth/login', { username, password });
+      
+      // Save token and user to localStorage
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+      }
+      
+      return { 
+        success: true, 
+        data: { 
+          user: response.data.user, 
+          token: response.data.token 
+        } 
+      };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Login failed' 
+      };
     }
+  },
+
+  register: async (userData) => {
+    try {
+      const response = await api.post('/auth/register', {
+        username: userData.username,
+        password: userData.password,
+        email: userData.email,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        birthDate: userData.birthDate,
+        gender: userData.gender,
+        city: userData.city,
+        address: userData.address,
+        role: userData.role
+      });
+
+      // Check if user needs approval
+      const requiresApproval = userData.role === 'manager' && !response.data.user.isApproved;
+
+      if (requiresApproval) {
+        return {
+          success: true,
+          data: {
+            message: response.data.message || 'Registration successful. Your account is pending admin approval.',
+            requiresApproval: true
+          }
+        };
+      }
+
+      // Auto-approved (fan) - save token if provided
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+      }
+
+      return { 
+        success: true, 
+        data: { 
+          user: response.data.user,
+          token: response.data.token 
+        } 
+      };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Registration failed' 
+      };
+    }
+  }
 };
+
+// ==========================================
+// MATCH API
+// ==========================================
 export const matchAPI = {
-    getAll: async () => {
-        await delay(400);
-        return { success: true, data: matchesDB };
-    },
-
-    getById: async (id) => {
-        await delay(300);
-        const match = matchesDB.find(m => m.id === parseInt(id));
-        if (match) {
-            return { success: true, data: match };
-        }
-        return { success: false, error: 'Match not found' };
-    },
-
-    getUpcoming: async () => {
-        await delay(400);
-        const now = new Date();
-        const upcoming = matchesDB.filter(match => {
-            const matchDate = new Date(match.dateTime);
-            return matchDate > now && match.status === 'scheduled';
-        }).sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime));
-        return { success: true, data: upcoming };
-    },
-
-    create: async (matchData) => {
-        await delay(600);
-        const newMatch = {
-            id: matchesDB.length + 1,
-            ...matchData,
-            status: 'scheduled'
-        };
-        matchesDB.push(newMatch);
-        const stadium = getStadiumById(newMatch.stadiumId);
-        seatsDB[newMatch.id] = generateSeats(stadium.vipRows, stadium.vipSeatsPerRow);
-
-        return { success: true, data: newMatch };
-    },
-
-    update: async (id, matchData) => {
-        await delay(600);
-        const index = matchesDB.findIndex(m => m.id === parseInt(id));
-        if (index !== -1) {
-            matchesDB[index] = { ...matchesDB[index], ...matchData };
-            return { success: true, data: matchesDB[index] };
-        }
-        return { success: false, error: 'Match not found' };
+  getAll: async () => {
+    try {
+      const response = await api.get('/matches');
+      return { success: true, data: response.data };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Failed to fetch matches' 
+      };
     }
+  },
+
+  getById: async (id) => {
+    try {
+      const response = await api.get(`/matches/${id}`);
+      return { success: true, data: response.data };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Match not found' 
+      };
+    }
+  },
+
+  getUpcoming: async () => {
+    try {
+      const response = await api.get('/matches');
+      const now = new Date();
+      const upcoming = response.data
+        .filter(match => new Date(match.dateTime) > now)
+        .sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime));
+      return { success: true, data: upcoming };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Failed to fetch matches' 
+      };
+    }
+  },
+
+  create: async (matchData) => {
+    try {
+      const response = await api.post('/matches', {
+        homeTeam: matchData.homeTeam,
+        awayTeam: matchData.awayTeam,
+        stadium: matchData.stadiumId, // Backend expects 'stadium' not 'stadiumId'
+        dateTime: matchData.dateTime,
+        mainReferee: matchData.mainReferee,
+        linesmen: matchData.linesmen
+      });
+      return { success: true, data: response.data.match };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Failed to create match' 
+      };
+    }
+  },
+
+  update: async (id, matchData) => {
+    try {
+      const updatePayload = {};
+      if (matchData.homeTeam) updatePayload.homeTeam = matchData.homeTeam;
+      if (matchData.awayTeam) updatePayload.awayTeam = matchData.awayTeam;
+      if (matchData.stadiumId) updatePayload.stadium = matchData.stadiumId;
+      if (matchData.dateTime) updatePayload.dateTime = matchData.dateTime;
+      if (matchData.mainReferee) updatePayload.mainReferee = matchData.mainReferee;
+      if (matchData.linesmen) updatePayload.linesmen = matchData.linesmen;
+
+      const response = await api.patch(`/matches/${id}`, updatePayload);
+      return { success: true, data: response.data.match };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Failed to update match' 
+      };
+    }
+  },
+
+  getStats: async (id) => {
+    try {
+      const response = await api.get(`/matches/${id}/stats`);
+      return { success: true, data: response.data };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Failed to fetch match stats' 
+      };
+    }
+  }
 };
+
+// ==========================================
+// STADIUM API
+// ==========================================
 export const stadiumAPI = {
-    getAll: async () => {
-        await delay(300);
-        return { success: true, data: stadiumsDB };
-    },
-
-    create: async (stadiumData) => {
-        await delay(600);
-        const newStadium = {
-            id: stadiumsDB.length + 1,
-            ...stadiumData
-        };
-        stadiumsDB.push(newStadium);
-        return { success: true, data: newStadium };
+  getAll: async () => {
+    try {
+      const response = await api.get('/stadiums');
+      return { success: true, data: response.data };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Failed to fetch stadiums' 
+      };
     }
+  },
+
+  create: async (stadiumData) => {
+    try {
+      const response = await api.post('/stadiums', {
+        name: stadiumData.name,
+        city: stadiumData.city,
+        vipRows: stadiumData.vipRows,
+        seatsPerRow: stadiumData.vipSeatsPerRow || stadiumData.seatsPerRow
+      });
+      return { success: true, data: response.data.stadium };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Failed to create stadium' 
+      };
+    }
+  }
 };
+
+// ==========================================
+// SEAT API
+// ==========================================
 export const seatAPI = {
-    getByMatch: async (matchId) => {
-        await delay(400);
-        const seats = seatsDB[matchId];
-        if (seats) {
-            return { success: true, data: seats };
+  getByMatch: async (matchId) => {
+    try {
+      const response = await api.get(`/matches/${matchId}`);
+      const { match, reservedSeats, totalSeats, availableSeats } = response.data;
+      
+      // Generate seat grid based on stadium dimensions
+      const seats = [];
+      for (let row = 1; row <= match.stadium.vipRows; row++) {
+        for (let seatNumber = 1; seatNumber <= match.stadium.seatsPerRow; seatNumber++) {
+          const seatId = `${row}-${seatNumber}`;
+          const isReserved = reservedSeats.includes(seatId);
+          
+          seats.push({
+            row,
+            seatNumber,
+            status: isReserved ? 'reserved' : 'vacant',
+            reservedBy: isReserved ? 'reserved' : null
+          });
         }
-        return { success: false, error: 'Seats not found' };
+      }
+      
+      return { success: true, data: seats };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Failed to fetch seats' 
+      };
     }
+  }
 };
+
+// ==========================================
+// RESERVATION API
+// ==========================================
 export const reservationAPI = {
-    create: async (reservationData) => {
-        await delay(800);
-
-        const { matchId, seats: selectedSeats, userId, creditCard } = reservationData;
-        const matchSeats = seatsDB[matchId];
-        for (const selectedSeat of selectedSeats) {
-            const seat = matchSeats.find(s =>
-                s.row === selectedSeat.row && s.seatNumber === selectedSeat.seatNumber
-            );
-
-            if (!seat || seat.status === 'reserved') {
-                return {
-                    success: false,
-                    error: 'One or more seats are no longer available. Please refresh and try again.'
-                };
-            }
-        }
-        selectedSeats.forEach(selectedSeat => {
-            const seat = matchSeats.find(s =>
-                s.row === selectedSeat.row && s.seatNumber === selectedSeat.seatNumber
-            );
-            seat.status = 'reserved';
-            seat.reservedBy = userId;
-        });
-        const newReservation = {
-            id: reservationsDB.length + 1,
-            userId,
-            matchId,
-            seats: selectedSeats,
-            ticketNumber: generateTicketNumber(),
-            creditCardLast4: creditCard.slice(-4),
-            totalAmount: selectedSeats.length * 250, // 250 per seat
-            createdAt: new Date().toISOString(),
-            status: 'confirmed'
-        };
-
-        reservationsDB.push(newReservation);
-
-        return { success: true, data: newReservation };
-    },
-
-    getByUser: async (userId) => {
-        await delay(400);
-        const userReservations = reservationsDB.filter(r => r.userId === userId && r.status === 'confirmed');
-        return { success: true, data: userReservations };
-    },
-
-    cancel: async (reservationId) => {
-        await delay(600);
-
-        const reservation = reservationsDB.find(r => r.id === parseInt(reservationId));
-        if (!reservation) {
-            return { success: false, error: 'Reservation not found' };
-        }
-        const match = matchesDB.find(m => m.id === reservation.matchId);
-        const matchDate = new Date(match.dateTime);
-        const now = new Date();
-        const daysDifference = (matchDate - now) / (1000 * 60 * 60 * 24);
-
-        if (daysDifference < 3) {
-            return {
-                success: false,
-                error: 'Cannot cancel reservation less than 3 days before the match'
-            };
-        }
-        reservation.status = 'cancelled';
-        const matchSeats = seatsDB[reservation.matchId];
-        reservation.seats.forEach(seat => {
-            const s = matchSeats.find(ms => ms.row === seat.row && ms.seatNumber === seat.seatNumber);
-            if (s) {
-                s.status = 'vacant';
-                s.reservedBy = null;
-            }
-        });
-
-        return { success: true, data: { message: 'Reservation cancelled successfully' } };
+  create: async (reservationData) => {
+    try {
+      const response = await api.post('/reservations', {
+        matchId: reservationData.matchId,
+        seats: reservationData.seats,
+        creditCardNumber: reservationData.creditCard,
+        creditCardPin: '1234' // You may want to add this to reservationData
+      });
+      
+      return { success: true, data: response.data };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Reservation failed' 
+      };
     }
+  },
+
+  getByUser: async (userId) => {
+    try {
+      const response = await api.get('/reservations/my-reservations');
+      return { success: true, data: response.data };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Failed to fetch reservations' 
+      };
+    }
+  },
+
+  cancel: async (reservationId) => {
+    try {
+      const response = await api.delete(`/reservations/${reservationId}`);
+      return { 
+        success: true, 
+        data: { message: response.data.message } 
+      };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Failed to cancel reservation' 
+      };
+    }
+  }
 };
+
+// ==========================================
+// ADMIN API
+// ==========================================
 export const adminAPI = {
-    getPendingUsers: async () => {
-        await delay(400);
-        const pending = usersDB.filter(u => !u.approved);
-        return { success: true, data: pending };
-    },
-
-    approveUser: async (userId) => {
-        await delay(600);
-        const user = usersDB.find(u => u.id === parseInt(userId));
-        if (user) {
-            user.approved = true;
-            const { password, ...userWithoutPassword } = user;
-            return { success: true, data: userWithoutPassword };
-        }
-        return { success: false, error: 'User not found' };
-    },
-
-    removeUser: async (userId) => {
-        await delay(600);
-        const index = usersDB.findIndex(u => u.id === parseInt(userId));
-        if (index !== -1) {
-            usersDB.splice(index, 1);
-            return { success: true, data: { message: 'User removed successfully' } };
-        }
-        return { success: false, error: 'User not found' };
+  getPendingUsers: async () => {
+    try {
+      const response = await api.get('/users/pending-managers');
+      return { success: true, data: response.data };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Failed to fetch pending users' 
+      };
     }
+  },
+
+  approveUser: async (userId) => {
+    try {
+      const response = await api.patch(`/users/${userId}/approve`);
+      return { success: true, data: response.data.user };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Failed to approve user' 
+      };
+    }
+  },
+
+  removeUser: async (userId) => {
+    try {
+      const response = await api.delete(`/users/${userId}`);
+      return { 
+        success: true, 
+        data: { message: response.data.message } 
+      };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Failed to remove user' 
+      };
+    }
+  },
+
+  getAllUsers: async () => {
+    try {
+      const response = await api.get('/users');
+      return { success: true, data: response.data };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Failed to fetch users' 
+      };
+    }
+  }
 };
+
+// ==========================================
+// USER API
+// ==========================================
 export const userAPI = {
-    updateProfile: async (userId, userData) => {
-        await delay(600);
-        const user = usersDB.find(u => u.id === parseInt(userId));
-        if (user) {
-            const { username, email, ...allowedUpdates } = userData;
-            Object.assign(user, allowedUpdates);
-            const { password, ...userWithoutPassword } = user;
-            return { success: true, data: userWithoutPassword };
-        }
-        return { success: false, error: 'User not found' };
+  updateProfile: async (userId, userData) => {
+    try {
+      // Backend doesn't allow updating username and email, so we filter them out
+      const { username, email, ...allowedUpdates } = userData;
+      
+      const response = await api.patch('/users/profile', allowedUpdates);
+      return { success: true, data: response.data.user };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Failed to update profile' 
+      };
     }
+  },
+
+  getProfile: async () => {
+    try {
+      const response = await api.get('/users/profile');
+      return { success: true, data: response.data };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Failed to fetch profile' 
+      };
+    }
+  }
 };
+
+// ==========================================
+// TEAM API (Static data - can be enhanced)
+// ==========================================
 export const teamAPI = {
-    getAll: async () => {
-        await delay(300);
-        return { success: true, data: teams };
-    }
+  getAll: async () => {
+    // Egyptian Premier League teams
+    const teams = [
+      { id: 1, name: 'Al Ahly', city: 'Cairo' },
+      { id: 2, name: 'Zamalek', city: 'Cairo' },
+      { id: 3, name: 'Pyramids FC', city: 'Cairo' },
+      { id: 4, name: 'Ismaily', city: 'Ismailia' },
+      { id: 5, name: 'Al Masry', city: 'Port Said' },
+      { id: 6, name: 'Al Ittihad Alexandria', city: 'Alexandria' },
+      { id: 7, name: 'Ceramica Cleopatra', city: 'Cairo' },
+      { id: 8, name: 'Future FC', city: 'Cairo' },
+      { id: 9, name: 'Ghazl El Mahalla', city: 'Mahalla' },
+      { id: 10, name: 'El Gouna', city: 'Hurghada' },
+      { id: 11, name: 'ENPPI', city: 'Cairo' },
+      { id: 12, name: 'Smouha', city: 'Alexandria' },
+      { id: 13, name: 'National Bank of Egypt SC', city: 'Cairo' },
+      { id: 14, name: 'Pharco FC', city: 'Cairo' },
+      { id: 15, name: 'ZED FC', city: 'Cairo' },
+      { id: 16, name: 'Al Mokawloon', city: 'Cairo' },
+      { id: 17, name: 'Talaea El Gaish', city: 'Cairo' },
+      { id: 18, name: 'Haras El Hodood', city: 'Cairo' }
+    ];
+
+    return { success: true, data: teams };
+  }
 };
+
+// ==========================================
+// Helper functions to maintain compatibility
+// ==========================================
+
+// Get stadium by ID (helper)
+export const getStadiumById = async (stadiumId) => {
+  try {
+    const response = await api.get(`/stadiums/${stadiumId}`);
+    return response.data;
+  } catch (error) {
+    return null;
+  }
+};
+
+// Get team by name (helper)
+export const getTeamByName = (teams, teamName) => {
+  return teams.find(t => t.name === teamName);
+};
+
+export default api;
