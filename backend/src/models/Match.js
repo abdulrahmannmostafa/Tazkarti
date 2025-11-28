@@ -2,11 +2,11 @@ const mongoose = require('mongoose');
 
 const matchSchema = new mongoose.Schema({
   homeTeam: {
-    type: String,
+    type: String,  
     required: true
   },
   awayTeam: {
-    type: String,
+    type: String,  
     required: true,
     validate: {
       validator: function(v) {

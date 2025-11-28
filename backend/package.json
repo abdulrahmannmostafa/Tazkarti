@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "create-admin": "node src/scripts/createAdmin.js"
+    "create-admin": "node src/scripts/createAdmin.js",
+    "seed-teams": "node src/scripts/seedTeams.js"
   },
   "dependencies": {
     "express": "^4.18.2",
