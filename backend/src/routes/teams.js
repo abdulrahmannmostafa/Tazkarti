@@ -1,9 +1,7 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const teamController = require('../controllers/teamController');
 const { auth, requireRole, requireApproval } = require('../middleware/auth');
-
-// Public routes
 router.get('/', teamController.getAllTeams);
 router.get('/:id', teamController.getTeamById);
 

@@ -1,13 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { teams, getTeamById } from '../../data/teams';
-import { stadiums, getStadiumById } from '../../data/stadiums';
 import './MatchCard.css';
 
 const MatchCard = ({ match }) => {
-    const homeTeam = getTeamById(match.homeTeamId);
-    const awayTeam = getTeamById(match.awayTeamId);
-    const stadium = getStadiumById(match.stadiumId);
+    // Backend returns team names directly, not IDs
+    const homeTeam = match.homeTeam || 'Unknown Team';
+    const awayTeam = match.awayTeam || 'Unknown Team';
+    const stadium = match.stadium || {};
 
     const matchDate = new Date(match.dateTime);
     const formattedDate = matchDate.toLocaleDateString('en-US', {
@@ -20,11 +19,15 @@ const MatchCard = ({ match }) => {
         minute: '2-digit'
     });
 
+    // Determine match status based on date
+    const now = new Date();
+    const status = matchDate > now ? 'Upcoming' : 'Completed';
+
     return (
         <div className="match-card glass-card">
             <div className="match-header">
-                <span className="match-status badge badge-success">
-                    {match.status}
+                <span className={`match-status badge ${matchDate > now ? 'badge-success' : 'badge-secondary'}`}>
+                    {status}
                 </span>
                 <span className="match-date">
                     {formattedDate} • {formattedTime}
@@ -33,8 +36,8 @@ const MatchCard = ({ match }) => {
 
             <div className="match-teams">
                 <div className="team home-team">
-                    <div className="team-logo">{homeTeam.logo}</div>
-                    <h3 className="team-name">{homeTeam.name}</h3>
+                    <div className="team-logo">⚽</div>
+                    <h3 className="team-name">{homeTeam}</h3>
                 </div>
 
                 <div className="match-vs">
@@ -42,24 +45,24 @@ const MatchCard = ({ match }) => {
                 </div>
 
                 <div className="team away-team">
-                    <div className="team-logo">{awayTeam.logo}</div>
-                    <h3 className="team-name">{awayTeam.name}</h3>
+                    <div className="team-logo">⚽</div>
+                    <h3 className="team-name">{awayTeam}</h3>
                 </div>
             </div>
 
             <div className="match-info">
                 <div className="match-venue">
                     <span className="icon">🏟️</span>
-                    {stadium.name}
+                    {stadium.name || 'Unknown Stadium'}
                 </div>
                 <div className="match-location">
                     <span className="icon">📍</span>
-                    {stadium.city}
+                    {stadium.city || 'Unknown City'}
                 </div>
             </div>
 
             <div className="match-actions">
-                <Link to={`/matches/${match.id}`} className="btn btn-primary btn-block">
+                <Link to={`/matches/${match._id}`} className="btn btn-primary btn-block">
                     View Details
                 </Link>
             </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+ï»¿import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { userAPI } from '../../services/api';
 import './Profile.css';
@@ -44,7 +44,7 @@ const Profile = () => {
         setMessage(null);
 
         try {
-            const result = await userAPI.updateProfile(user.id, formData);
+            const result = await userAPI.updateProfile(formData);
 
             if (result.success) {
                 setMessage({ type: 'success', text: 'Profile updated successfully' });            } else {
@@ -67,7 +67,7 @@ const Profile = () => {
                         </div>
                         <div className="profile-title">
                             <h2>{user?.firstName} {user?.lastName}</h2>
-                            <p>@{user?.username} • {user?.role}</p>
+                            <p>@{user?.username} ï¿½ {user?.role}</p>
                         </div>
                     </div>
 

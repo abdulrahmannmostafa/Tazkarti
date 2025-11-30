@@ -30,14 +30,16 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (username, password) => {
         try {
-            const response = await authAPI.login(username, password);
+            const response = await authAPI.login({ username, password });
 
             if (response.success) {
-                setUser(response.data.user);
-                setToken(response.data.token);
+                const { user: userData, token: authToken } = response.data;
 
-                localStorage.setItem('user', JSON.stringify(response.data.user));
-                localStorage.setItem('token', response.data.token);
+                setUser(userData);
+                setToken(authToken);
+
+                localStorage.setItem('user', JSON.stringify(userData));
+                localStorage.setItem('token', authToken);
 
                 return { success: true };
             }
@@ -53,21 +55,12 @@ export const AuthProvider = ({ children }) => {
             const response = await authAPI.register(userData);
 
             if (response.success) {
-                if (response.data.requiresApproval) {
-                    return {
-                        success: true,
-                        requiresApproval: true,
-                        message: response.data.message
-                    };
-                }
-
-                setUser(response.data.user);
-                setToken(response.data.token);
-
-                localStorage.setItem('user', JSON.stringify(response.data.user));
-                localStorage.setItem('token', response.data.token);
-
-                return { success: true };
+                // All users require approval, so never auto-login
+                return {
+                    success: true,
+                    requiresApproval: true,
+                    message: response.data.message || 'Registration successful. Please wait for admin approval.'
+                };
             }
 
             return { success: false, error: response.error };

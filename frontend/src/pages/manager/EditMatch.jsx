@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { matchAPI } from '../../services/api';
-import { teams } from '../../data/teams';
-import { stadiums } from '../../data/stadiums';
+import { matchAPI, teamAPI, stadiumAPI } from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 const EditMatch = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
+    const [teams, setTeams] = useState([]);
+    const [stadiums, setStadiums] = useState([]);
     const [formData, setFormData] = useState({
-        homeTeamId: '',
-        awayTeamId: '',
-        stadiumId: '',
+        homeTeam: '',
+        awayTeam: '',
+        stadium: '',
         dateTime: '',
         mainReferee: '',
         linesman1: '',
@@ -23,19 +23,31 @@ const EditMatch = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
-        const fetchMatch = async () => {
+        const fetchData = async () => {
             try {
-                const result = await matchAPI.getById(id);
-                if (result.success) {
-                    const match = result.data;
+                const [matchResult, teamsResult, stadiumsResult] = await Promise.all([
+                    matchAPI.getById(id),
+                    teamAPI.getAll(),
+                    stadiumAPI.getAll()
+                ]);
+
+                if (teamsResult.success) {
+                    setTeams(teamsResult.data);
+                }
+                if (stadiumsResult.success) {
+                    setStadiums(stadiumsResult.data);
+                }
+
+                if (matchResult.success) {
+                    const match = matchResult.data.match;
                     setFormData({
-                        homeTeamId: match.homeTeamId,
-                        awayTeamId: match.awayTeamId,
-                        stadiumId: match.stadiumId,
-                        dateTime: match.dateTime,
-                        mainReferee: match.mainReferee,
-                        linesman1: match.linesman1,
-                        linesman2: match.linesman2
+                        homeTeam: match.homeTeam,
+                        awayTeam: match.awayTeam,
+                        stadium: match.stadium?._id || match.stadium,
+                        dateTime: match.dateTime ? new Date(match.dateTime).toISOString().slice(0, 16) : '',
+                        mainReferee: match.mainReferee || '',
+                        linesman1: match.linesmen?.[0] || '',
+                        linesman2: match.linesmen?.[1] || ''
                     });
                 } else {
                     setError('Match not found');
@@ -47,7 +59,7 @@ const EditMatch = () => {
             }
         };
 
-        fetchMatch();
+        fetchData();
     }, [id]);
 
     const handleChange = (e) => {
@@ -58,11 +70,12 @@ const EditMatch = () => {
         }));
     };
 
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
 
-        if (formData.homeTeamId === formData.awayTeamId) {
+        if (formData.homeTeam === formData.awayTeam) {
             setError('Home and Away teams cannot be the same');
             return;
         }
@@ -71,10 +84,12 @@ const EditMatch = () => {
 
         try {
             const matchData = {
-                ...formData,
-                homeTeamId: parseInt(formData.homeTeamId),
-                awayTeamId: parseInt(formData.awayTeamId),
-                stadiumId: parseInt(formData.stadiumId)
+                homeTeam: formData.homeTeam,
+                awayTeam: formData.awayTeam,
+                stadium: formData.stadium,
+                dateTime: formData.dateTime,
+                mainReferee: formData.mainReferee,
+                linesmen: [formData.linesman1, formData.linesman2]
             };
 
             const result = await matchAPI.update(id, matchData);
@@ -106,15 +121,15 @@ const EditMatch = () => {
                             <div className="form-group">
                                 <label className="form-label">Home Team</label>
                                 <select
-                                    name="homeTeamId"
+                                    name="homeTeam"
                                     className="form-select"
-                                    value={formData.homeTeamId}
+                                    value={formData.homeTeam}
                                     onChange={handleChange}
                                     required
                                 >
                                     <option value="">Select Home Team</option>
                                     {teams.map(team => (
-                                        <option key={team.id} value={team.id}>
+                                        <option key={team._id} value={team.name}>
                                             {team.name}
                                         </option>
                                     ))}
@@ -124,15 +139,15 @@ const EditMatch = () => {
                             <div className="form-group">
                                 <label className="form-label">Away Team</label>
                                 <select
-                                    name="awayTeamId"
+                                    name="awayTeam"
                                     className="form-select"
-                                    value={formData.awayTeamId}
+                                    value={formData.awayTeam}
                                     onChange={handleChange}
                                     required
                                 >
                                     <option value="">Select Away Team</option>
                                     {teams.map(team => (
-                                        <option key={team.id} value={team.id}>
+                                        <option key={team._id} value={team.name}>
                                             {team.name}
                                         </option>
                                     ))}
@@ -144,15 +159,15 @@ const EditMatch = () => {
                             <div className="form-group">
                                 <label className="form-label">Stadium</label>
                                 <select
-                                    name="stadiumId"
+                                    name="stadium"
                                     className="form-select"
-                                    value={formData.stadiumId}
+                                    value={formData.stadium}
                                     onChange={handleChange}
                                     required
                                 >
                                     <option value="">Select Stadium</option>
                                     {stadiums.map(stadium => (
-                                        <option key={stadium.id} value={stadium.id}>
+                                        <option key={stadium._id} value={stadium._id}>
                                             {stadium.name} ({stadium.city})
                                         </option>
                                     ))}

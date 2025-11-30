@@ -1,6 +1,4 @@
-const Stadium = require('../models/Stadium');
-
-// Get all stadiums
+﻿const Stadium = require('../models/Stadium');
 exports.getAllStadiums = async (req, res) => {
   try {
     const stadiums = await Stadium.find().sort({ name: 1 });
@@ -9,8 +7,6 @@ exports.getAllStadiums = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-
-// Get stadium by ID
 exports.getStadiumById = async (req, res) => {
   try {
     const stadium = await Stadium.findById(req.params.id);
@@ -22,13 +18,9 @@ exports.getStadiumById = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-
-// Create stadium (Manager only)
 exports.createStadium = async (req, res) => {
   try {
     const { name, city, vipRows, seatsPerRow } = req.body;
-    
-    // Validate input
     if (!name || !city || !vipRows || !seatsPerRow) {
       return res.status(400).json({ message: 'All fields are required' });
     }
@@ -57,8 +49,6 @@ exports.createStadium = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-
-// Update stadium (Manager only)
 exports.updateStadium = async (req, res) => {
   try {
     const { name, city, vipRows, seatsPerRow } = req.body;
@@ -90,8 +80,6 @@ exports.updateStadium = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-
-// Delete stadium (Manager only)
 exports.deleteStadium = async (req, res) => {
   try {
     const stadium = await Stadium.findByIdAndDelete(req.params.id);

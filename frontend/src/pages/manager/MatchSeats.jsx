@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { seatAPI, matchAPI } from '../../services/api';
 import SeatGrid from '../../components/seats/SeatGrid';
@@ -45,8 +45,6 @@ const MatchSeats = () => {
     const homeTeam = getTeamById(match.homeTeamId);
     const awayTeam = getTeamById(match.awayTeamId);
     const stadium = getStadiumById(match.stadiumId);
-
-    // Calculate stats
     const totalSeats = seats.length;
     const reservedSeats = seats.filter(s => s.status === 'reserved').length;
     const vacantSeats = totalSeats - reservedSeats;

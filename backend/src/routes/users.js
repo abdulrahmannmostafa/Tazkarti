@@ -1,11 +1,9 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
 const { auth, requireRole } = require('../middleware/auth');
-
-// Admin routes
 router.get('/', auth, requireRole('admin'), userController.getAllUsers);
-router.get('/pending-managers', auth, requireRole('admin'), userController.getPendingManagers);
+router.get('/pending', auth, requireRole('admin'), userController.getPendingManagers);
 router.patch('/:id/approve', auth, requireRole('admin'), userController.approveManager);
 router.delete('/:id', auth, requireRole('admin'), userController.deleteUser);
 

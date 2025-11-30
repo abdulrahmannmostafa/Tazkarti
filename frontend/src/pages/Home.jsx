@@ -1,8 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import './Home.css';
 
 const Home = () => {
+    const { user } = useAuth();
+
     return (
         <div className="home">
             <div className="container">
@@ -21,9 +24,11 @@ const Home = () => {
                         <Link to="/matches" className="btn btn-lg btn-primary">
                             View Matches
                         </Link>
-                        <Link to="/register" className="btn btn-lg btn-outline">
-                            Get Started
-                        </Link>
+                        {!user && (
+                            <Link to="/register" className="btn btn-lg btn-outline">
+                                Get Started
+                            </Link>
+                        )}
                     </div>
                 </div>
 

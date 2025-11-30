@@ -13,6 +13,7 @@ export const useReservation = () => {
 export const ReservationProvider = ({ children }) => {
     const [selectedSeats, setSelectedSeats] = useState([]);
     const [currentMatch, setCurrentMatch] = useState(null);
+    const [matchId, setMatchId] = useState(null);
 
     const addSeat = (seat) => {
         setSelectedSeats(prev => {
@@ -46,12 +47,15 @@ export const ReservationProvider = ({ children }) => {
     };
 
     const getTotalAmount = () => {
-        return selectedSeats.length * 250; // 250 EGP per seat
+        return selectedSeats.length * 150; // 150 EGP per seat
     };
 
     const value = {
         selectedSeats,
+        setSelectedSeats, // Direct setter for easier use
         currentMatch,
+        matchId,
+        setMatchId,
         addSeat,
         removeSeat,
         toggleSeat,

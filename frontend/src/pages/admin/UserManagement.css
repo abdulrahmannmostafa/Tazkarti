@@ -78,4 +78,33 @@
     text-align: center;
     padding: var(--spacing-xl);
     color: var(--color-text-muted);
+}/* Tabs */
+.tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.tab {
+    padding: 12px 24px;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s ease;
+    position: relative;
+    bottom: -2px;
+}
+
+.tab:hover {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
 }

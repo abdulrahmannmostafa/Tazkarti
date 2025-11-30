@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -26,14 +26,11 @@ app.use(express.json());
 
 // Socket.io connection
 io.on('connection', (socket) => {
-  console.log('New client connected');
-  
   socket.on('joinMatch', (matchId) => {
     socket.join(`match_${matchId}`);
   });
   
   socket.on('disconnect', () => {
-    console.log('Client disconnected');
   });
 });
 

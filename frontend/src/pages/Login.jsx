@@ -96,14 +96,6 @@ const Login = () => {
 
                     <div className="auth-footer">
                         <p>Don't have an account? <Link to="/register">Register now</Link></p>
-                        <div className="demo-credentials">
-                            <p className="text-muted text-sm">Demo Credentials:</p>
-                            <div className="badges-container">
-                                <span className="badge badge-admin" title="admin / admin123">Admin</span>
-                                <span className="badge badge-manager" title="manager1 / manager123">Manager</span>
-                                <span className="badge badge-fan" title="fan1 / fan123">Fan</span>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>

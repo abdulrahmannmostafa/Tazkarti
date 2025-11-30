@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { stadiumAPI } from '../../services/api';
 import './CreateStadium.css';
@@ -10,7 +10,7 @@ const CreateStadium = () => {
         city: 'Cairo',
         capacity: '',
         vipRows: '',
-        vipSeatsPerRow: ''
+        seatsPerRow: ''
     });
 
     const [error, setError] = useState('');
@@ -34,7 +34,7 @@ const CreateStadium = () => {
                 ...formData,
                 capacity: parseInt(formData.capacity),
                 vipRows: parseInt(formData.vipRows),
-                vipSeatsPerRow: parseInt(formData.vipSeatsPerRow)
+                seatsPerRow: parseInt(formData.seatsPerRow)
             };
 
             const result = await stadiumAPI.create(stadiumData);
@@ -130,9 +130,9 @@ const CreateStadium = () => {
                                     <label className="form-label">Seats per Row</label>
                                     <input
                                         type="number"
-                                        name="vipSeatsPerRow"
+                                        name="seatsPerRow"
                                         className="form-input"
-                                        value={formData.vipSeatsPerRow}
+                                        value={formData.seatsPerRow}
                                         onChange={handleChange}
                                         required
                                         min="1"
@@ -141,9 +141,9 @@ const CreateStadium = () => {
                                 </div>
                             </div>
 
-                            {formData.vipRows && formData.vipSeatsPerRow && (
+                            {formData.vipRows && formData.seatsPerRow && (
                                 <div className="alert alert-info">
-                                    Total VIP Seats: <strong>{formData.vipRows * formData.vipSeatsPerRow}</strong>
+                                    Total VIP Seats: <strong>{formData.vipRows * formData.seatsPerRow}</strong>
                                 </div>
                             )}
                         </div>

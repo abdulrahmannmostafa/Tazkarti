@@ -1,10 +1,9 @@
-const jwt = require('jsonwebtoken');
+﻿const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
 // Middleware to verify JWT token and authenticate user
 const auth = async (req, res, next) => {
   try {
-    // Get token from header
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
     if (!token) {
@@ -13,8 +12,6 @@ const auth = async (req, res, next) => {
     
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-    
-    // Find user by ID from token
     const user = await User.findById(decoded.userId).select('-password');
     
     if (!user) {
@@ -43,8 +40,6 @@ const requireRole = (...roles) => {
     if (!req.user) {
       return res.status(401).json({ message: 'Authentication required' });
     }
-    
-    // Check if user's role is in the allowed roles
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({ 
         message: `Access denied. Required role: ${roles.join(' or ')}. Your role: ${req.user.role}` 

@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+﻿const mongoose = require('mongoose');
 const Team = require('../models/Team');
 require('dotenv').config();
 
@@ -26,17 +26,12 @@ const teams = [
 async function seedTeams() {
   try {
     await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/epl-reservation');
-    
-    console.log('Connected to MongoDB');
-    
     // Clear existing teams
     await Team.deleteMany({});
     console.log('Cleared existing teams');
     
     // Insert new teams
     await Team.insertMany(teams);
-    console.log(`Successfully seeded ${teams.length} teams!`);
-    
     // Display teams
     const allTeams = await Team.find().sort({ name: 1 });
     console.log('\nTeams in database:');

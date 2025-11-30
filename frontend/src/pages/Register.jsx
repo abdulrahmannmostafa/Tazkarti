@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './Register.css';
@@ -46,7 +46,6 @@ const Register = () => {
         setIsSubmitting(true);
 
         try {
-            // Remove confirmPassword before sending
             const { confirmPassword, ...registerData } = formData;
 
             const result = await register(registerData);

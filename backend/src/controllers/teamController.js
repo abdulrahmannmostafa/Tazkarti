@@ -1,6 +1,4 @@
-const Team = require('../models/Team');
-
-// Get all teams
+﻿const Team = require('../models/Team');
 exports.getAllTeams = async (req, res) => {
   try {
     const teams = await Team.find().sort({ name: 1 });
@@ -9,8 +7,6 @@ exports.getAllTeams = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-
-// Get team by ID
 exports.getTeamById = async (req, res) => {
   try {
     const team = await Team.findById(req.params.id);
@@ -22,8 +18,6 @@ exports.getTeamById = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-
-// Create team (Admin/Manager only)
 exports.createTeam = async (req, res) => {
   try {
     const { name, city, stadium, founded, logo } = req.body;
@@ -49,8 +43,6 @@ exports.createTeam = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-
-// Update team (Admin/Manager only)
 exports.updateTeam = async (req, res) => {
   try {
     const { name, city, stadium, founded, logo } = req.body;
@@ -83,8 +75,6 @@ exports.updateTeam = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-
-// Delete team (Admin/Manager only)
 exports.deleteTeam = async (req, res) => {
   try {
     const team = await Team.findByIdAndDelete(req.params.id);

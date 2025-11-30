@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { matchAPI } from '../../services/api';
-import { teams } from '../../data/teams';
-import { stadiums } from '../../data/stadiums';
+import { matchAPI, teamAPI, stadiumAPI } from '../../services/api';
 import './CreateMatch.css';
 
 const CreateMatch = () => {
     const navigate = useNavigate();
+    const [teams, setTeams] = useState([]);
+    const [stadiums, setStadiums] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [formData, setFormData] = useState({
         homeTeamId: '',
         awayTeamId: '',
@@ -19,6 +20,30 @@ const CreateMatch = () => {
 
     const [error, setError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [teamsResult, stadiumsResult] = await Promise.all([
+                    teamAPI.getAll(),
+                    stadiumAPI.getAll()
+                ]);
+
+                if (teamsResult.success) {
+                    setTeams(teamsResult.data);
+                }
+                if (stadiumsResult.success) {
+                    setStadiums(stadiumsResult.data);
+                }
+            } catch (err) {
+                setError('Failed to load teams and stadiums');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -40,11 +65,22 @@ const CreateMatch = () => {
         setIsSubmitting(true);
 
         try {
+            const homeTeam = teams.find(t => t._id === formData.homeTeamId);
+            const awayTeam = teams.find(t => t._id === formData.awayTeamId);
+
+            if (!homeTeam || !awayTeam) {
+                setError('Invalid team selection');
+                setIsSubmitting(false);
+                return;
+            }
+
             const matchData = {
-                ...formData,
-                homeTeamId: parseInt(formData.homeTeamId),
-                awayTeamId: parseInt(formData.awayTeamId),
-                stadiumId: parseInt(formData.stadiumId)
+                homeTeam: homeTeam.name,  // Send team name, not ID
+                awayTeam: awayTeam.name,  // Send team name, not ID
+                stadium: formData.stadiumId,  // Send stadium ID (backend will populate)
+                dateTime: formData.dateTime,
+                mainReferee: formData.mainReferee,
+                linesmen: [formData.linesman1, formData.linesman2]
             };
 
             const result = await matchAPI.create(matchData);
@@ -52,7 +88,7 @@ const CreateMatch = () => {
             if (result.success) {
                 navigate('/matches');
             } else {
-                setError(result.error);
+                setError(result.error || 'Failed to create match');
             }
         } catch (err) {
             setError('Failed to create match');
@@ -60,6 +96,16 @@ const CreateMatch = () => {
             setIsSubmitting(false);
         }
     };
+
+    if (loading) {
+        return (
+            <div className="create-match-page">
+                <div className="container">
+                    <div className="loading">Loading teams and stadiums...</div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="create-match-page">
@@ -82,7 +128,7 @@ const CreateMatch = () => {
                                 >
                                     <option value="">Select Home Team</option>
                                     {teams.map(team => (
-                                        <option key={team.id} value={team.id}>
+                                        <option key={team._id} value={team._id}>
                                             {team.name}
                                         </option>
                                     ))}
@@ -100,7 +146,7 @@ const CreateMatch = () => {
                                 >
                                     <option value="">Select Away Team</option>
                                     {teams.map(team => (
-                                        <option key={team.id} value={team.id}>
+                                        <option key={team._id} value={team._id}>
                                             {team.name}
                                         </option>
                                     ))}
@@ -120,7 +166,7 @@ const CreateMatch = () => {
                                 >
                                     <option value="">Select Stadium</option>
                                     {stadiums.map(stadium => (
-                                        <option key={stadium.id} value={stadium.id}>
+                                        <option key={stadium._id} value={stadium._id}>
                                             {stadium.name} ({stadium.city})
                                         </option>
                                     ))}

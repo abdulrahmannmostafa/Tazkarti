@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { matchAPI } from '../services/api';
-import { getTeamById } from '../data/teams';
-import { getStadiumById } from '../data/stadiums';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import './MatchDetail.css';
 
 const MatchDetail = () => {
     const { id } = useParams();
-    const [match, setMatch] = useState(null);
+    const [matchData, setMatchData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const { isFan, isAuthenticated } = useAuth();
+    const [deleting, setDeleting] = useState(false);
+    const { isFan, isManager, isAuthenticated, user } = useAuth();
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -21,9 +20,9 @@ const MatchDetail = () => {
             try {
                 const result = await matchAPI.getById(id);
                 if (result.success) {
-                    setMatch(result.data);
+                    setMatchData(result.data);
                 } else {
-                    setError(result.error);
+                    setError(result.error || 'Failed to load match');
                 }
             } catch (error) {
                 setError('Failed to load match details');
@@ -35,25 +34,63 @@ const MatchDetail = () => {
         fetchMatch();
     }, [id]);
 
+    const handleDelete = async () => {
+        if (!window.confirm('Are you sure you want to delete this match? All reservations will be cancelled.')) {
+            return;
+        }
+
+        setDeleting(true);
+        try {
+            const result = await matchAPI.delete(id);
+            if (result.success) {
+                alert('Match deleted successfully');
+                navigate('/matches');
+            } else {
+                alert('Failed to delete match: ' + (result.error || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('Failed to delete match');
+        } finally {
+            setDeleting(false);
+        }
+    };
+
     if (loading) return <LoadingSpinner message="Loading match details..." />;
     if (error) return <div className="container alert alert-error">{error}</div>;
-    if (!match) return <div className="container alert alert-warning">Match not found</div>;
+    if (!matchData || !matchData.match) return <div className="container alert alert-warning">Match not found</div>;
 
-    const homeTeam = getTeamById(match.homeTeamId);
-    const awayTeam = getTeamById(match.awayTeamId);
-    const stadium = getStadiumById(match.stadiumId);
-
+    const match = matchData.match;
+    const stadium = match.stadium || {};
     const matchDate = new Date(match.dateTime);
     const isUpcoming = matchDate > new Date();
 
     return (
         <div className="match-detail-page">
             <div className="container">
+                {/* Manager Controls */}
+                {isManager && (
+                    <div className="manager-controls" style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
+                        <Link
+                            to={`/manager/matches/${id}/edit`}
+                            className="btn btn-warning"
+                        >
+                            ✏️ Edit Match
+                        </Link>
+                        <button
+                            onClick={handleDelete}
+                            className="btn btn-danger"
+                            disabled={deleting}
+                        >
+                            {deleting ? 'Deleting...' : '🗑️ Delete Match'}
+                        </button>
+                    </div>
+                )}
+
                 <div className="match-hero glass-card">
                     <div className="match-hero-content">
                         <div className="team-large home">
-                            <div className="team-logo-large">{homeTeam.logo}</div>
-                            <h2>{homeTeam.name}</h2>
+                            <div className="team-logo-large">⚽</div>
+                            <h2>{match.homeTeam || 'Unknown Team'}</h2>
                         </div>
 
                         <div className="match-center">
@@ -63,13 +100,13 @@ const MatchDetail = () => {
                             </div>
                             <div className="vs-large">VS</div>
                             <div className="stadium-name">
-                                ??? {stadium.name}
+                                🏟️ {stadium.name || 'Unknown Stadium'}
                             </div>
                         </div>
 
                         <div className="team-large away">
-                            <div className="team-logo-large">{awayTeam.logo}</div>
-                            <h2>{awayTeam.name}</h2>
+                            <div className="team-logo-large">⚽</div>
+                            <h2>{match.awayTeam || 'Unknown Team'}</h2>
                         </div>
                     </div>
                 </div>
@@ -79,62 +116,83 @@ const MatchDetail = () => {
                         <h3>Match Information</h3>
                         <ul className="info-list">
                             <li>
-                                <span className="label">Competition</span>
-                                <span className="value">Egyptian Premier League</span>
+                                <strong>Status:</strong>
+                                <span className={`badge ${isUpcoming ? 'badge-success' : 'badge-secondary'}`}>
+                                    {isUpcoming ? 'Upcoming' : 'Completed'}
+                                </span>
                             </li>
                             <li>
-                                <span className="label">Venue</span>
-                                <span className="value">{stadium.name}, {stadium.city}</span>
+                                <strong>Venue:</strong> {stadium.name || 'Unknown Stadium'}
                             </li>
                             <li>
-                                <span className="label">Main Referee</span>
-                                <span className="value">{match.mainReferee}</span>
+                                <strong>Location:</strong> {stadium.city || 'Unknown City'}
                             </li>
                             <li>
-                                <span className="label">Linesmen</span>
-                                <span className="value">{match.linesman1}, {match.linesman2}</span>
+                                <strong>Date:</strong> {matchDate.toLocaleDateString('en-US', {
+                                    weekday: 'long',
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                })}
+                            </li>
+                            <li>
+                                <strong>Kick-off:</strong> {matchDate.toLocaleTimeString([], {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                })}
                             </li>
                         </ul>
                     </div>
 
-                    <div className="booking-card card">
-                        <h3>Ticket Reservation</h3>
-                        {isUpcoming ? (
-                            <div className="booking-action">
-                                <p className="price-tag">
-                                    <span className="amount">250 EGP</span>
-                                    <span className="per-ticket">/ ticket</span>
-                                </p>
-                                <p className="booking-note">
-                                    VIP Lounge Access included. Select your preferred seat.
-                                </p>
-
-                                {isAuthenticated ? (
-                                    isFan ? (
-                                        <Link to={`/matches/${match.id}/seats`} className="btn btn-primary btn-lg btn-block">
-                                            Select Seats
-                                        </Link>
-                                    ) : (
-                                        <div className="alert alert-info">
-                                            Only registered fans can book tickets. You are logged in as {user?.role}.
-                                        </div>
-                                    )
-                                ) : (
-                                    <div className="login-prompt">
-                                        <p>Please login to book tickets</p>
-                                        <div className="auth-buttons">
-                                            <Link to="/login" className="btn btn-primary">Login</Link>
-                                            <Link to="/register" className="btn btn-outline">Register</Link>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="alert alert-warning">
-                                This match has already ended. Tickets are no longer available.
-                            </div>
-                        )}
+                    <div className="details-card card">
+                        <h3>Match Officials</h3>
+                        <ul className="info-list">
+                            <li>
+                                <strong>Main Referee:</strong> {match.mainReferee || 'TBA'}
+                            </li>
+                            {match.linesmen && match.linesmen.length > 0 && (
+                                <>
+                                    <li>
+                                        <strong>Linesman 1:</strong> {match.linesmen[0] || 'TBA'}
+                                    </li>
+                                    <li>
+                                        <strong>Linesman 2:</strong> {match.linesmen[1] || 'TBA'}
+                                    </li>
+                                </>
+                            )}
+                        </ul>
                     </div>
+
+                    {matchData.totalSeats && (
+                        <div className="details-card card">
+                            <h3>Seat Availability</h3>
+                            <ul className="info-list">
+                                <li>
+                                    <strong>Total VIP Seats:</strong> {matchData.totalSeats}
+                                </li>
+                                <li>
+                                    <strong>Available:</strong> {matchData.availableSeats}
+                                </li>
+                                <li>
+                                    <strong>Reserved:</strong> {matchData.totalSeats - matchData.availableSeats}
+                                </li>
+                            </ul>
+                        </div>
+                    )}
+                </div>
+
+                <div className="match-actions">
+                    {isFan && isAuthenticated && isUpcoming && (
+                        <Link
+                            to={`/matches/${id}/seats`}
+                            className="btn btn-primary btn-lg"
+                        >
+                            Select Seats
+                        </Link>
+                    )}
+                    <Link to="/matches" className="btn btn-secondary btn-lg">
+                        Back to Matches
+                    </Link>
                 </div>
             </div>
         </div>
